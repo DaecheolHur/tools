@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="글자 수, 날짜, 퍼센트, 단위를 브라우저에서 바로 계산합니다.">
+<title>바로도구 - 글자 · 날짜 · 퍼센트 · 단위</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1c2430;--muted:#667085;--line:#e4e8ee;--accent:#0f766e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Noto Sans KR",sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:32px 16px 56px}
+header{margin-bottom:22px}h1{margin:0 0 6px;font-size:32px}header p{margin:0;color:var(--muted)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0}
+.tab{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer}
+.tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.panel{display:none;background:var(--card);border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(22,34,51,.05)}
+.panel.active{display:block}
+label{display:block;margin:12px 0 6px;font-weight:700}
+textarea,input,select{width:100%;border:1px solid #d5dbe3;border-radius:10px;padding:12px;font:inherit;background:#fff}
+textarea{min-height:180px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+button{border:0;border-radius:10px;padding:11px 14px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+button.ghost{background:#eef3f2;color:#245e58}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.stat{background:#f3f7f6;border-radius:12px;padding:12px}.stat b{display:block;font-size:22px}.stat span{color:var(--muted);font-size:13px}
+.result{margin-top:14px;padding:16px;border-radius:12px;background:#f6f8fa;line-height:1.7}
+.big{font-size:28px;font-weight:800}
+footer{margin-top:22px;color:var(--muted);font-size:13px;text-align:center}
+@media(max-width:700px){.row,.stats{grid-template-columns:1fr 1fr}h1{font-size:27px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>바로도구</h1>
+<p>설치나 로그인 없이 글자, 날짜, 퍼센트, 단위를 계산합니다.</p>
+</header>
+<div class="tabs" role="tablist">
+<button class="tab active" data-panel="text" type="button">글자</button>
+<button class="tab" data-panel="date" type="button">날짜</button>
+<button class="tab" data-panel="percent" type="button">퍼센트</button>
+<button class="tab" data-panel="unit" type="button">단위</button>
+</div>
+
+<section id="text" class="panel active">
+<label for="draft">텍스트</label>
+<textarea id="draft" placeholder="세어 볼 글을 붙여 넣으세요."></textarea>
+<div class="actions">
+<button class="ghost" id="trimText" type="button">공백 정리</button>
+<button class="ghost" id="dedupeLines" type="button">중복 줄 제거</button>
+<button class="ghost" id="copyText" type="button">복사</button>
+<button class="ghost" id="clearText" type="button">지우기</button>
+</div>
+<div class="stats" aria-live="polite">
+<div class="stat"><b id="chars">0</b><span>전체 글자</span></div>
+<div class="stat"><b id="charsNoSpace">0</b><span>공백 제외</span></div>
+<div class="stat"><b id="lines">0</b><span>줄</span></div>
+<div class="stat"><b id="minutes">0분</b><span>읽는 시간</span></div>
+</div>
+</section>
+
+<section id="date" class="panel">
+<div class="row">
+<div><label for="startDate">시작일</label><input id="startDate" type="date"></div>
+<div><label for="endDate">종료일</label><input id="endDate" type="date"></div>
+</div>
+<label for="dayOffset">기준일에 더할 일수</label>
+<input id="dayOffset" type="number" value="7">
+<div class="actions"><button id="calcDate" type="button">계산</button></div>
+<div id="dateResult" class="result">시작일과 종료일을 선택하세요.</div>
+</section>
+
+<section id="percent" class="panel">
+<div class="row">
+<div><label for="baseNumber">기준 값</label><input id="baseNumber" type="number" value="1000"></div>
+<div><label for="percentValue">퍼센트</label><input id="percentValue" type="number" value="10"></div>
+</div>
+<div class="actions"><button id="calcPercent" type="button">계산</button></div>
+<div id="percentResult" class="result">기준 값과 퍼센트를 입력하세요.</div>
+</section>
+
+<section id="unit" class="panel">
+<div class="row">
+<div><label for="unitValue">값</label><input id="unitValue" type="number" value="1"></div>
+<div><label for="unitKind">종류</label>
+<select id="unitKind">
+<option value="length">길이</option>
+<option value="weight">무게</option>
+<option value="temperature">온도</option>
+</select></div>
+</div>
+<div class="row">
+<div><label for="fromUnit">변환 전</label><select id="fromUnit"></select></div>
+<div><label for="toUnit">변환 후</label><select id="toUnit"></select></div>
+</div>
+<div class="actions"><button id="calcUnit" type="button">변환</button></div>
+<div id="unitResult" class="result">변환할 값을 입력하세요.</div>
+</section>
+<footer>계산은 이 브라우저 안에서만 이루어집니다.</footer>
+</div>
+<script>
+const units={
+ length:[["밀리미터","mm",0.001],["센티미터","cm",0.01],["미터","m",1],["킬로미터","km",1000],["인치","in",0.0254],["피트","ft",0.3048]],
+ weight:[["그램","g",0.001],["킬로그램","kg",1],["톤","t",1000],["온스","oz",0.028349523125],["파운드","lb",0.45359237]],
+ temperature:[["섭씨","°C"],["화씨","°F"]]
+};
+function show(id){
+ document.querySelectorAll(".panel").forEach(panel=>panel.classList.toggle("active",panel.id===id));
+ document.querySelectorAll(".tab").forEach(tab=>tab.classList.toggle("active",tab.dataset.panel===id));
+}
+document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>show(tab.dataset.panel)));
+
+const draft=document.getElementById("draft");
+function countText(){
+ const value=draft.value;
+ const lines=value.length?value.split(/\r?\n/).length:0;
+ const minutes=Math.max(value.trim()?1:0,Math.ceil(value.replace(/\s/g,"").length/500));
+ document.getElementById("chars").textContent=value.length.toLocaleString();
+ document.getElementById("charsNoSpace").textContent=value.replace(/\s/g,"").length.toLocaleString();
+ document.getElementById("lines").textContent=lines.toLocaleString();
+ document.getElementById("minutes").textContent=minutes+"분";
+}
+draft.addEventListener("input",countText);
+document.getElementById("trimText").addEventListener("click",()=>{draft.value=draft.value.replace(/[ \t]+/g," ").replace(/\n{3,}/g,"\n\n").trim();countText()});
+document.getElementById("dedupeLines").addEventListener("click",()=>{draft.value=[...new Set(draft.value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean))].join("\n");countText()});
+document.getElementById("copyText").addEventListener("click",()=>navigator.clipboard.writeText(draft.value));
+document.getElementById("clearText").addEventListener("click",()=>{draft.value="";countText()});
+
+function dateOnly(value){const date=new Date(value+"T00:00:00");return Number.isNaN(date.getTime())?null:date}
+function formatDate(date){return new Intl.DateTimeFormat("ko-KR",{dateStyle:"full"}).format(date)}
+document.getElementById("calcDate").addEventListener("click",()=>{
+ const start=dateOnly(document.getElementById("startDate").value);
+ const end=dateOnly(document.getElementById("endDate").value);
+ const result=document.getElementById("dateResult");
+ if(!start||!end){result.textContent="시작일과 종료일을 모두 선택하세요.";return}
+ const days=Math.round((end-start)/86400000);
+ const shifted=new Date(start);shifted.setDate(shifted.getDate()+Number(document.getElementById("dayOffset").value||0));
+ const label=days===0?"같은 날":days>0?`${days.toLocaleString()}일 후`:`${Math.abs(days).toLocaleString()}일 전`;
+ result.innerHTML=`종료일은 시작일보다 <span class="big">${label}</span><br>시작일에 일수를 더하면 ${formatDate(shifted)}입니다.`;
+});
+
+document.getElementById("calcPercent").addEventListener("click",()=>{
+ const base=Number(document.getElementById("baseNumber").value);
+ const percent=Number(document.getElementById("percentValue").value);
+ const result=document.getElementById("percentResult");
+ if(!Number.isFinite(base)||!Number.isFinite(percent)){result.textContent="숫자로 입력하세요.";return}
+ const amount=base*percent/100;
+ const fmt=new Intl.NumberFormat("ko-KR",{maximumFractionDigits:4});
+ result.innerHTML=`${fmt.format(base)}의 ${fmt.format(percent)}%는 <span class="big">${fmt.format(amount)}</span><br>더한 값 ${fmt.format(base+amount)} · 뺀 값 ${fmt.format(base-amount)}`;
+});
+
+function fillUnits(){
+ const kind=document.getElementById("unitKind").value;
+ const options=units[kind].map(item=>`<option value="${item[1]}">${item[0]}</option>`).join("");
+ document.getElementById("fromUnit").innerHTML=options;
+ document.getElementById("toUnit").innerHTML=options;
+ document.getElementById("toUnit").selectedIndex=Math.min(1,units[kind].length-1);
+}
+document.getElementById("unitKind").addEventListener("change",fillUnits);
+document.getElementById("calcUnit").addEventListener("click",()=>{
+ const kind=document.getElementById("unitKind").value;
+ const value=Number(document.getElementById("unitValue").value);
+ const result=document.getElementById("unitResult");
+ if(!Number.isFinite(value)){result.textContent="숫자로 입력하세요.";return}
+ const from=document.getElementById("fromUnit").value;
+ const to=document.getElementById("toUnit").value;
+ let converted;
+ if(kind==="temperature"){
+  const celsius=from==="°C"?value:(value-32)*5/9;
+  converted=to==="°C"?celsius:celsius*9/5+32;
+ }else{
+  const table=Object.fromEntries(units[kind].map(item=>[item[1],item[2]]));
+  converted=value*table[from]/table[to];
+ }
+ result.innerHTML=`<span class="big">${new Intl.NumberFormat("ko-KR",{maximumFractionDigits:6}).format(converted)}</span> ${to}`;
+});
+fillUnits();
+</script>
+</body>
+</html>
